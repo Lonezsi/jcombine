@@ -1,0 +1,4 @@
+# This is the config file for jcombine
+
+loadingbar:YIP E
+#loadingbar: A

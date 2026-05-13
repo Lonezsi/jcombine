@@ -271,7 +271,7 @@ $files = $allFiles | Where-Object {
     }
 
     # ignore junk
-    if ($p -match "node_modules|dist|\.git") {
+    if ($p -match "node_modules|dist|\.git|\.vs|\.vscode|\.idea|\.cache|\.next|\.nuxt|\.output|\.expo|\.expo-shared|package-lock\.json|yarn\.lock|pnpm-lock\.yaml|\.log|\.env") {
         return $false
     }
 
@@ -373,35 +373,68 @@ $currentFile = 0
 say -m ""
 say -m "Building bundle..." info
 
-foreach ($file in $files) {
+# ---- LOAD LOADING BAR CONFIG ----
+$configPath = Join-Path $PSScriptRoot "config.txt"
+$startString = "YIP"
+$repeatingChar = "E"
 
-    $currentFile++
-
-    Write-Progress `
-        -Activity "Creating bundle" `
-        -Status "$currentFile / $totalFiles files" `
-        -PercentComplete (($currentFile / $totalFiles) * 100)
-
-    if (!(Test-Path $file)) { continue }
-
-    Add-Content $outFile "===================="
-    Add-Content $outFile $file
-    Add-Content $outFile "===================="
-
-    $content = Get-Content $file -Raw -ErrorAction SilentlyContinue
-
-    if ([string]::IsNullOrWhiteSpace($content)) {
-        Add-Content $outFile "[EMPTY FILE]"
-    } else {
-        Add-Content $outFile $content
+if (Test-Path $configPath) {
+    $configLines = Get-Content $configPath
+    foreach ($line in $configLines) {
+        $trimmed = $line.TrimStart()
+        if ($trimmed -match '^#' -or $trimmed -eq '') { continue }
+        if ($trimmed -match '^loadingbar:\s*(.+)$') {
+            $rawValue = $matches[1].Trim()
+            $spaceIndex = $rawValue.IndexOf(' ')
+            if ($spaceIndex -gt 0) {
+                $startString   = $rawValue.Substring(0, $spaceIndex)
+                $repeatingChar = $rawValue.Substring($spaceIndex + 1).Trim()
+            } else {
+                $startString   = ""
+                $repeatingChar = $rawValue
+            }
+            break
+        }
     }
-
-    Add-Content $outFile "`r`n"
 }
 
-Write-Progress `
-    -Activity "Creating bundle" `
-    -Completed
+# ---- HIDE CURSOR & BUILD ----
+$originalCursorVisible = [Console]::CursorVisible
+[Console]::CursorVisible = $false
+
+try {
+    foreach ($file in $files) {
+        $currentFile++
+
+        $barWidthUnits = 20
+        $filledUnits = [math]::Floor(($currentFile / $totalFiles) * $barWidthUnits)
+
+        $barFill  = $startString + ($repeatingChar * $filledUnits)
+        $barEmpty = " " * ($barWidthUnits - $filledUnits)
+
+        Write-Host -NoNewline ("`rCreating bundle: [${barFill}${barEmpty}] $currentFile / $totalFiles files")
+
+        if (!(Test-Path $file)) { continue }
+
+        Add-Content $outFile "===================="
+        Add-Content $outFile $file
+        Add-Content $outFile "===================="
+
+        $content = Get-Content $file -Raw -ErrorAction SilentlyContinue
+
+        if ([string]::IsNullOrWhiteSpace($content)) {
+            Add-Content $outFile "[EMPTY FILE]"
+        } else {
+            Add-Content $outFile $content
+        }
+
+        Add-Content $outFile "`r`n"
+    }
+    Write-Host ""
+}
+finally {
+    [Console]::CursorVisible = $originalCursorVisible
+}
 
 # =========================
 # COPY TO CLIPBOARD
