@@ -5,33 +5,20 @@ $repoUrl = "https://github.com/$repo.git"
 Write-Host "Installing / Updating jcombine..." -ForegroundColor Cyan
 
 # =========================
-# VERSION
+# INSTALL OR UPDATE
 # =========================
+if (-not (Test-Path $installDir)) {
 
-$toolRoot = Split-Path $MyInvocation.MyCommand.Path
-$versionFile = Join-Path $toolRoot "version.txt"
+    git clone $repoUrl $installDir
 
-$VERSION = if (Test-Path $versionFile) {
-    Get-Content $versionFile -Raw
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Clone failed." -ForegroundColor Red
+        exit 1
+    }
+
 } else {
-    "unknown"
-}
 
-if ($args -contains "--version") {
-    Write-Host "jcombine v$VERSION"
-    exit 0
-}
-
-# =========================
-# UPDATE
-# =========================
-
-
-if ($args -contains "update") {
-
-    Write-Host "Updating jcombine..." -ForegroundColor Cyan
-
-    $installDir = Split-Path $MyInvocation.MyCommand.Path
+    Write-Host "Updating existing install..." -ForegroundColor Yellow
 
     Set-Location $installDir
 
@@ -46,58 +33,27 @@ if ($args -contains "update") {
         exit 1
     }
 
-    Write-Host "Updated successfully." -ForegroundColor Green
-    exit 0
+    Set-Location $PSScriptRoot
 }
 
 # =========================
-# CASE 1: NOT INSTALLED
+# ENSURE ENTRYPOINT NAME
 # =========================
-if (-not (Test-Path $installDir)) {
+$batOld = Join-Path $installDir "COMBINER.bat"
+$batNew = Join-Path $installDir "combine.bat"
 
-    git clone $repoUrl $installDir
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "Clone failed. Repo URL or access issue." -ForegroundColor Red
-        exit 1
-    }
-
-} else {
-
-    # =========================
-    # CASE 2: UPDATE EXISTING
-    # =========================
-
-    Set-Location $installDir
-
-    git fetch origin
-
-    $local = git rev-parse HEAD
-    $remote = git rev-parse origin/master
-
-    if ($local -eq $remote) {
-        Write-Host "Already up to date." -ForegroundColor Green
-    }
-    else {
-        Write-Host "Updating jcombine..." -ForegroundColor Yellow
-
-        git reset --hard origin/master
-
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "Update failed." -ForegroundColor Red
-            exit 1
-        }
-
-        Write-Host "Updated successfully." -ForegroundColor Green
-    }
-
-    Set-Location ..
+if (Test-Path $batOld -and -not (Test-Path $batNew)) {
+    Rename-Item $batOld "combine.bat" -ErrorAction SilentlyContinue
 }
 
 # =========================
-# FIX ENTRYPOINT NAME
+# VERSION FILE SAFETY
 # =========================
-Rename-Item "$installDir\COMBINER.bat" "combine.bat" -ErrorAction SilentlyContinue
+$versionFile = Join-Path $installDir "version.txt"
+
+if (-not (Test-Path $versionFile)) {
+    "0.0.0" | Set-Content $versionFile
+}
 
 # =========================
 # ADD TO USER PATH
@@ -112,5 +68,5 @@ if ($userPath -notlike "*$installDir*") {
     )
 }
 
-Write-Host "Ready." -ForegroundColor Green
-Write-Host "Restart terminal if needed, then run: combine" -ForegroundColor Yellow
+Write-Host "Installed / Updated successfully." -ForegroundColor Green
+Write-Host "Restart terminal then run: combine" -ForegroundColor Yellow
