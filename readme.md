@@ -1,6 +1,6 @@
 # jcombine
 
-PowerShell tool that bundles a git repository into a single text file or chunked prompt format for AI tools.
+PowerShell simple crudely implemented tool that bundles a git repository into a single text file or chunked prompt format for AI tools.
 
 ## Features
 
