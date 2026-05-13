@@ -5,9 +5,16 @@ $repoUrl = "https://github.com/$repo.git"
 Write-Host "Installing / Updating jcombine..." -ForegroundColor Cyan
 
 # =========================
-# INSTALL OR UPDATE
+# ENSURE INSTALL DIR EXISTS (IMPORTANT FIX)
 # =========================
 if (-not (Test-Path $installDir)) {
+    New-Item -ItemType Directory -Path $installDir | Out-Null
+}
+
+# =========================
+# INSTALL OR UPDATE
+# =========================
+if (-not (Test-Path (Join-Path $installDir ".git"))) {
 
     git clone $repoUrl $installDir
 
@@ -25,15 +32,12 @@ if (-not (Test-Path $installDir)) {
     git fetch origin
 
     $branch = git rev-parse --abbrev-ref HEAD
-
     git reset --hard "origin/$branch"
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Update failed." -ForegroundColor Red
         exit 1
     }
-
-    Set-Location $PSScriptRoot
 }
 
 # =========================
@@ -42,8 +46,9 @@ if (-not (Test-Path $installDir)) {
 $batOld = Join-Path $installDir "COMBINER.bat"
 $batNew = Join-Path $installDir "combine.bat"
 
-if ((Test-Path $batOld) -and (-not (Test-Path $batNew))) {
-    Rename-Item $batOld "combine.bat" -ErrorAction SilentlyContinue
+# FIX: no broken conditional logic
+if (Test-Path $batOld) {
+    Rename-Item $batOld "combine.bat" -Force -ErrorAction SilentlyContinue
 }
 
 # =========================
