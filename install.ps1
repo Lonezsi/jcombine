@@ -5,6 +5,52 @@ $repoUrl = "https://github.com/$repo.git"
 Write-Host "Installing / Updating jcombine..." -ForegroundColor Cyan
 
 # =========================
+# VERSION
+# =========================
+
+$toolRoot = Split-Path $MyInvocation.MyCommand.Path
+$versionFile = Join-Path $toolRoot "version.txt"
+
+$VERSION = if (Test-Path $versionFile) {
+    Get-Content $versionFile -Raw
+} else {
+    "unknown"
+}
+
+if ($args -contains "--version") {
+    Write-Host "jcombine v$VERSION"
+    exit 0
+}
+
+# =========================
+# UPDATE
+# =========================
+
+
+if ($args -contains "update") {
+
+    Write-Host "Updating jcombine..." -ForegroundColor Cyan
+
+    $installDir = Split-Path $MyInvocation.MyCommand.Path
+
+    Set-Location $installDir
+
+    git fetch origin
+
+    $branch = git rev-parse --abbrev-ref HEAD
+
+    git reset --hard "origin/$branch"
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Update failed." -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "Updated successfully." -ForegroundColor Green
+    exit 0
+}
+
+# =========================
 # CASE 1: NOT INSTALLED
 # =========================
 if (-not (Test-Path $installDir)) {
