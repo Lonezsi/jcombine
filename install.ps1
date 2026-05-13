@@ -1,13 +1,21 @@
 $repo = "Lonezsi/jcombine"
-$installDir = "$env:USERPROFILE\combine-cli"
+$installDir = "$env:USERPROFILE\jcombine"
 
-Write-Host "Installing combine..." -ForegroundColor Cyan
+Write-Host "Installing jcombine..." -ForegroundColor Cyan
 
 if (Test-Path $installDir) {
     Remove-Item $installDir -Recurse -Force
 }
 
 git clone "https://github.com/$repo.git" $installDir
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Clone failed. Repo URL or access issue." -ForegroundColor Red
+    exit 1
+}
+
+# IMPORTANT: enforce correct command name
+Rename-Item "$installDir\COMBINER.bat" "combine.bat" -ErrorAction SilentlyContinue
 
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 
@@ -17,10 +25,7 @@ if ($userPath -notlike "*$installDir*") {
         "$userPath;$installDir",
         "User"
     )
-
-    Write-Host "Added combine to PATH" -ForegroundColor Green
 }
 
-Write-Host ""
-Write-Host "Installed successfully." -ForegroundColor Green
-Write-Host "Restart terminal then run: combine" -ForegroundColor Yellow
+Write-Host "Installed." -ForegroundColor Green
+Write-Host "Restart terminal and run: combine" -ForegroundColor Yellow
