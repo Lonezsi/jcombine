@@ -1,4 +1,42 @@
 # =========================
+# CLI PARAMS (top)
+# =========================
+param(
+    [string]$arg
+)
+
+if ($arg -eq "--version") {
+    $versionFile = Join-Path (Split-Path $MyInvocation.MyCommand.Path) "version.txt"
+    if (Test-Path $versionFile) {
+        Get-Content $versionFile
+    } else {
+        "0.0.0"
+    }
+    exit 0
+}
+
+if ($arg -eq "--help") {
+    Write-Host @"
+jcombine
+
+Usage:
+  combine              Run interactive mode
+  combine --version    Show version
+  combine --help       Show help
+
+Output modes:
+  chunks  -> chunked AI prompts
+  bundle  -> single file bundle + prompts
+  just    -> raw bundle only
+
+Notes:
+- Must run inside git repo
+- Ignores node_modules, dist, .git
+"@
+    exit 0
+}
+
+# =========================
 # SHORT & SAFE COLOR OUTPUT
 # =========================
 function say {
@@ -146,7 +184,7 @@ function Show-TUIMenu {
 # OUTPUT DIRECTORY
 # =========================
 
-$toolRoot = Split-Path $MyInvocation.MyCommand.Path
+$toolRoot = Split-Path -Parent $PSCommandPath
 $outDir = Join-Path $toolRoot "output"
 
 # =========================
@@ -199,6 +237,10 @@ $allFiles = $allFiles | Sort-Object -Unique
 # MODE SELECTION (NOW SAFE)
 # =========================
 $modeRaw = Show-TUIMenu "Select mode:" ($modeOptions.label)
+
+$selectedMode = $modeOptions | Where-Object {
+    $modeRaw -eq $_.label
+}
 
 if (-not $selectedMode) {
     say -m "Invalid mode selection" error
