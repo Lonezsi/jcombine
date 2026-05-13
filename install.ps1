@@ -42,7 +42,7 @@ if (-not (Test-Path $installDir)) {
 $batOld = Join-Path $installDir "COMBINER.bat"
 $batNew = Join-Path $installDir "combine.bat"
 
-if (Test-Path $batOld -and -not (Test-Path $batNew)) {
+if ((Test-Path $batOld) -and (-not (Test-Path $batNew))) {
     Rename-Item $batOld "combine.bat" -ErrorAction SilentlyContinue
 }
 
