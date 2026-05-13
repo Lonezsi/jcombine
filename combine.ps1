@@ -143,6 +143,13 @@ function Show-TUIMenu {
 }
 
 # =========================
+# OUTPUT DIRECTORY
+# =========================
+
+$toolRoot = Split-Path $MyInvocation.MyCommand.Path
+$outDir = Join-Path $toolRoot "output"
+
+# =========================
 # GIT ROOT
 # =========================
 $root = git rev-parse --show-toplevel 2>$null
@@ -193,7 +200,10 @@ $allFiles = $allFiles | Sort-Object -Unique
 # =========================
 $modeRaw = Show-TUIMenu "Select mode:" ($modeOptions.label)
 
-$selectedMode = $modeOptions | Where-Object { $_.label -eq $modeRaw }
+if (-not $selectedMode) {
+    say -m "Invalid mode selection" error
+    exit 1
+}
 
 # =========================
 # FILTER
@@ -253,10 +263,11 @@ $files = $files | ForEach-Object {
 # =========================
 if (-not $files -or $files.Count -eq 0) {
 
-    $outDir = "chunks"
+    if (Test-Path $outDir) {
+        Remove-Item $outDir -Recurse -Force
+    }
 
-    Remove-Item $outDir -Recurse -Force -ErrorAction SilentlyContinue
-    New-Item -ItemType Directory -Path $outDir | Out-Null
+    New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
     $emptyFile = Join-Path $outDir "EMPTY.txt"
 
@@ -294,8 +305,11 @@ $outputMode = switch -Regex ($outputModeRaw) {
 # =========================
 # OUTPUT
 # =========================
-$outDir = "chunks"
-Remove-Item $outDir -Recurse -Force -ErrorAction SilentlyContinue
+
+if (Test-Path $outDir) {
+    Remove-Item $outDir -Recurse -Force
+}
+
 New-Item -ItemType Directory -Path $outDir | Out-Null
 
 $outFile = Join-Path $outDir "project-bundle.txt"
@@ -462,4 +476,4 @@ say -m "chunk_end_prompt.txt" -Color Cyan -NoNewLine
 say -m " ]" -Color DarkGray
 
 say -m ""
-say -m "All chunks created (in /chunks)" success
+say -m "All chunks created in: $outDir" success
