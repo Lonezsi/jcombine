@@ -22,7 +22,7 @@ PowerShell simple crudely implemented tool that bundles a git repository into a 
 Run in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/Lonezsi/jcombine/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/Lonezsi/jcombine/master/install.ps1 | iex
 ```
 
 Restart the terminal after install.

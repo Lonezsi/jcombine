@@ -1,5 +1,4 @@
-$repo = "YOUR_GITHUB_USERNAME/combine-cli"
-
+$repo = "Lonezsi/jcombine"
 $installDir = "$env:USERPROFILE\combine-cli"
 
 Write-Host "Installing combine..." -ForegroundColor Cyan
@@ -10,13 +9,9 @@ if (Test-Path $installDir) {
 
 git clone "https://github.com/$repo.git" $installDir
 
-$userPath = [Environment]::GetEnvironmentVariable(
-    "Path",
-    "User"
-)
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 
 if ($userPath -notlike "*$installDir*") {
-
     [Environment]::SetEnvironmentVariable(
         "Path",
         "$userPath;$installDir",
@@ -28,6 +23,4 @@ if ($userPath -notlike "*$installDir*") {
 
 Write-Host ""
 Write-Host "Installed successfully." -ForegroundColor Green
-Write-Host ""
-Write-Host "Restart terminal then run:" -ForegroundColor Yellow
-Write-Host "combine" -ForegroundColor Cyan
+Write-Host "Restart terminal then run: combine" -ForegroundColor Yellow
