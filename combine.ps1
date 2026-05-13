@@ -15,6 +15,15 @@ if ($arg -eq "--version") {
     exit 0
 }
 
+if ($arg -eq "--update") {
+    Write-Host "Updating..." -ForegroundColor Yellow
+
+    $installScript = "https://raw.githubusercontent.com/Lonezsi/jcombine/master/install.ps1"
+    irm $installScript | iex
+
+    exit 0
+}
+
 if ($arg -eq "--help") {
     Write-Host @"
 jcombine
@@ -23,6 +32,7 @@ Usage:
   combine              Run interactive mode
   combine --version    Show version
   combine --help       Show help
+  combine --update     Update jcombine
 
 Output modes:
   chunks  -> chunked AI prompts
@@ -33,6 +43,7 @@ Notes:
 - Must run inside git repo
 - Ignores node_modules, dist, .git
 "@
+
     exit 0
 }
 
