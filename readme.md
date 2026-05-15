@@ -1,6 +1,6 @@
 # jcombine
 
-A PowerShell tool that packages a git repository into a single text file or chunked AI‑ready prompts, right from your terminal.
+A PowerShell tool that packages a git repository into a single text file or chunked AI‑ready prompts – with full configurability and Windows context menu support.
 
 ## 🚀 Installation
 
@@ -10,18 +10,22 @@ Run this in PowerShell (admin not required):
 irm https://raw.githubusercontent.com/Lonezsi/jcombine/master/install.ps1 | iex
 ```
 
+Restart your terminal afterward. The `combine` command will be available everywhere, and you'll also get two new right‑click options (see below).
+
 ## ✨ Features
 
-- **Git‑aware** collect only changed, tracked, and untracked files (or scan everything)
-- **Mode filters** `front`, `back`, `mix`, `all` to target specific parts of your repo
+- **Git‑aware** – collect only changed, tracked, and untracked files (or scan everything)
+- **Mode filters** – `front`, `back`, `mix`, `all` with **configurable file extensions and root folders**
 - **Three output styles**
-  - `chunks` split for LLMs with context limits
-  - `bundle` one file plus start/end prompts
-  - `just` raw bundle, no prompts, no chunking
-- **Interactive TUI** select options with arrow keys and Enter, or use **CLI flags** for scripting
-- **Customisable loading bar** and **chunk size** via `config.txt`
-- **Configurable ignore patterns** exclude any files or folders you want
-- **Self‑update** `combine --update` fetches the latest version
+  - `chunks` – split for LLMs with context limits
+  - `bundle` – one file + start/end prompts
+  - `just` – raw bundle, no prompts, no chunking
+- **Interactive TUI** – arrow keys + Enter, or bypass with CLI flags
+- **Customisable loading bar**, chunk size, ignore patterns, and **AI prompts** – all in `config.txt`
+- **Right‑click context menus**
+  - Right‑click an **empty space in any folder** → `jcombine` runs the tool
+  - Right‑click **any file** → `jpaste` lets you pick a chunk or bundle and copies it to the clipboard
+- **Self‑update** – `combine --update` fetches the latest version
 
 ## 📋 Requirements
 
@@ -29,11 +33,9 @@ irm https://raw.githubusercontent.com/Lonezsi/jcombine/master/install.ps1 | iex
 - PowerShell 5.1+ or PowerShell 7+
 - Git installed and available in `PATH`
 
-Then restart your terminal. The `combine` command will be available everywhere.
-
 ## ⌨️ Usage
 
-Interactive mode
+### Interactive mode
 
 Navigate into any git repository and run:
 
@@ -41,24 +43,21 @@ Navigate into any git repository and run:
 combine
 ```
 
-Follow the menus to choose:
+Follow the menus to choose git filtering, project mode, and output style.
 
-- Git‑aware filtering (yes/no)
-- Project mode (front, back, mix, all)
-- Output mode (chunks, bundle, just)
-
-CLI flags (no menus):
+### CLI flags (skip the menus)
 
 ```powershell
-combine --version            # Show version
-combine --help               # Show help
-combine --update             # Download latest version
-combine --gitfilter on|off   # Force git‑aware filtering on/off
-combine --mode front|back|mix|all
-combine --outputmode chunks|bundle|just
+combine --version                     Show version
+combine --help                        Show this help
+combine --update                      Download latest version
+combine --gitfilter on|off            Force git‑aware filtering on/off
+combine --mode front|back|mix|all     Preselect project mode
+combine --outputmode chunks|bundle|just  Preselect output mode
+combine --config                      Open config.txt in Notepad
 ```
 
-Example — directly create a full-repo bundle without any prompts:
+Example – full repo, no prompts, directly:
 
 ```powershell
 combine --gitfilter off --mode all --outputmode just
@@ -66,38 +65,55 @@ combine --gitfilter off --mode all --outputmode just
 
 ## 📂 Output
 
-Everything lands in the `output` folder (created next to `combine.ps1`). Typical files:
+Everything lands in the `output` folder (created next to `combine.ps1`).
 
-- `project-bundle.txt` — the combined file
-- `prompt_start.txt` / `prompt_end.txt` — AI prompt wrappers (when using `bundle`)
-- `chunk_*.txt` — each chunk with an embedded prompt (when using `chunks`)
-- `chunk_end_prompt.txt` — the final instruction after all chunks
+| File                                  | Description                                     |
+| ------------------------------------- | ----------------------------------------------- |
+| `project-bundle.txt`                  | The combined file                               |
+| `prompt_start.txt` / `prompt_end.txt` | AI prompt wrappers (`bundle` mode)              |
+| `chunk_*.txt`                         | Each chunk with embedded prompt (`chunks` mode) |
+| `chunk_end_prompt.txt`                | Final instruction after all chunks              |
+| `EMPTY.txt`                           | Created when no files matched the filter        |
 
-If no files match your selection, an `EMPTY.txt` is created to signal tooling compatibility.
+## 📋 Right‑click menus (Windows)
+
+After installation, you'll have two new context menu entries:
+
+- **`jcombine`** – right‑click an empty area inside any folder → starts `combine` in that directory.
+- **`jpaste`** – right‑click **any file** → a small console menu lists all `.txt` files in `jcombine/output`. Select one with arrow keys and press Enter – its content is copied to the clipboard.
+
+The helper script `jpaster.ps1` can also be run directly from the terminal.
 
 ## ⚙️ Configuration
 
-The file `config.txt` sits next to `combine.ps1`. You can edit these values:
+Edit `config.txt` next to `combine.ps1`. All keys are optional – if omitted, sensible defaults are used.
 
-| Key          | Example        | Description                                           |
-| ------------ | -------------- | ----------------------------------------------------- |
-| `loadingbar` | `YIP E`        | Start string and repeating character for progress bar |
-| `chunksize`  | `20000`        | Max characters per chunk                              |
-| `ignore`     | `node_modules` | Will ignore matching files                            |
+| Key             | Example                                         | Description                                           |
+| --------------- | ----------------------------------------------- | ----------------------------------------------------- |
+| `loadingbar`    | `YIP E`                                         | Start string and repeating character for progress bar |
+| `chunksize`     | `20000`                                         | Max characters per chunk                              |
+| `ignore`        | `node_modules\|dist\|\.git`                     | Regex patterns to exclude (pipe‑separated)            |
+| `mode_exts`     | `mode_exts:front\|.ts,.tsx,.js`                 | File extensions for `front` / `back` / `mix` / `all`  |
+| `mode_roots`    | `mode_roots:front\|src/frontend,src/components` | Root folders for each mode                            |
+| `prompt_start`  | `Here is my codebase...`                        | First prompt sent with chunk #1                       |
+| `prompt_middle` | `Next part...`                                  | Prompt for subsequent chunks                          |
+| `prompt_end`    | `This is the full codebase...`                  | Prompt after the last chunk (or with `bundle` mode)   |
 
-Lines starting with `#` are comments and are ignored.
+Lines starting with `#` are comments and ignored.
 
 ## 🔔 Notes
 
-- Must be run inside a git repository.
-- Large repos may take a while — the progress bar shows current status.
-- Clipboard copying is temporarily disabled due to random issues; it will be re‑enabled in a future release.
-- `node_modules`, `dist`, `.git`, and common build/cache folders are ignored by default, but you can change this in `config.txt`.
+- Must be run **inside** a git repository.
+- Large repos may take a while – a progress bar keeps you informed.
+- Clipboard copying from `combine` itself is temporarily disabled; use the `jpaste` right‑click menu instead for reliable clipboard access.
+- The default ignore list already excludes `node_modules`, `dist`, `.git`, build folders, and IDE cache – you can extend it.
 
 ## 🛠️ Development
 
 Clone the repo, make changes, and test locally by running `combine.ps1` directly.
 
 Contributions and bug reports are welcome on GitHub.
+
+---
 
 Made with ❤️ for a smoother AI‑assisted workflow.

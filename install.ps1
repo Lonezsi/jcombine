@@ -73,5 +73,25 @@ if ($userPath -notlike "*$installDir*") {
     )
 }
 
+# =========================
+# ADD CONTEXT MENU ENTRIES
+# =========================
+
+$regPath = "HKCU:\Software\Classes\Directory\Background\shell\jcombine"
+New-Item -Path $regPath -Force | Out-Null
+Set-ItemProperty -Path $regPath -Name "(Default)" -Value "jcombine"
+Set-ItemProperty -Path $regPath -Name "Icon" -Value "powershell.exe"
+New-Item -Path "$regPath\command" -Force | Out-Null
+Set-ItemProperty -Path "$regPath\command" -Name "(Default)" -Value "cmd /c cd /d `"%V`" && combine"
+
+$regPath = "HKCU:\Software\Classes\*\shell\jpaste"
+New-Item -Path $regPath -Force | Out-Null
+Set-ItemProperty -Path $regPath -Name "(Default)" -Value "jpaste"
+Set-ItemProperty -Path $regPath -Name "Icon" -Value "powershell.exe"
+New-Item -Path "$regPath\command" -Force | Out-Null
+$script = Join-Path $env:USERPROFILE "jcombine\jpaster.ps1"
+Set-ItemProperty -Path "$regPath\command" -Name "(Default)" -Value "powershell -NoProfile -ExecutionPolicy Bypass -File `"$script`""
+
+
 Write-Host "Installed / Updated successfully." -ForegroundColor Green
 Write-Host "Restart terminal then run: combine" -ForegroundColor Yellow
