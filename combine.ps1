@@ -57,16 +57,14 @@ if (Test-Path $configPath) {
         if ($trimmed -match '^mode_exts:\s*([^|]+)\|(.+)$') {
             $modeKey = $matches[1].Trim().ToLower()
             $extsRaw = $matches[2].Trim()
-            if ($extsRaw -eq '*') {
+            # Empty or just whitespace → no filtering (like '*')
+            if ([string]::IsNullOrWhiteSpace($extsRaw) -or $extsRaw -eq '*') {
                 $customExts[$modeKey] = @('*')
             } else {
-                # Split by comma, clean up each extension
                 $exts = $extsRaw -split ',' | ForEach-Object { $_.Trim() }
-                # Ensure each starts with a dot (unless it's '*')
                 $exts = $exts | ForEach-Object { if ($_ -ne '*') { if ($_ -notmatch '^\.') { ".$_" } else { $_ } } else { $_ } }
                 $customExts[$modeKey] = $exts
             }
-
             continue
         }
 
