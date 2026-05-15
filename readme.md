@@ -79,11 +79,11 @@ If no files match your selection, an `EMPTY.txt` is created to signal tooling co
 
 The file `config.txt` sits next to `combine.ps1`. You can edit these values:
 
-| Key          | Example       | Description                                           |
-| ------------ | ------------- | ----------------------------------------------------- |
-| `loadingbar` | `YIP E`       | Start string and repeating character for progress bar |
-| `chunksize`  | `20000`       | Max characters per chunk                              |
-| `ignore`     | `node_modules | dist                                                  |
+| Key          | Example        | Description                                           |
+| ------------ | -------------- | ----------------------------------------------------- |
+| `loadingbar` | `YIP E`        | Start string and repeating character for progress bar |
+| `chunksize`  | `20000`        | Max characters per chunk                              |
+| `ignore`     | `node_modules` | Will ignore matching files                            |
 
 Lines starting with `#` are comments and are ignored.
 
