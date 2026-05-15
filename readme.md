@@ -12,16 +12,16 @@ irm https://raw.githubusercontent.com/Lonezsi/jcombine/master/install.ps1 | iex
 
 ## ✨ Features
 
-- **Git‑aware** – collect only changed, tracked, and untracked files (or scan everything)
-- **Mode filters** – `front`, `back`, `mix`, `all` to target specific parts of your repo
+- **Git‑aware** collect only changed, tracked, and untracked files (or scan everything)
+- **Mode filters** `front`, `back`, `mix`, `all` to target specific parts of your repo
 - **Three output styles**
-  - `chunks` – split for LLMs with context limits
-  - `bundle` – one file plus start/end prompts
-  - `just` – raw bundle, no prompts, no chunking
-- **Interactive TUI** – select options with arrow keys and Enter, or use **CLI flags** for scripting
+  - `chunks` split for LLMs with context limits
+  - `bundle` one file plus start/end prompts
+  - `just` raw bundle, no prompts, no chunking
+- **Interactive TUI** select options with arrow keys and Enter, or use **CLI flags** for scripting
 - **Customisable loading bar** and **chunk size** via `config.txt`
-- **Configurable ignore patterns** – exclude any files or folders you want
-- **Self‑update** – `combine --update` fetches the latest version
+- **Configurable ignore patterns** exclude any files or folders you want
+- **Self‑update** `combine --update` fetches the latest version
 
 ## 📋 Requirements
 
