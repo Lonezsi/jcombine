@@ -1,4 +1,11 @@
 # This is the config file for jcombine
 
+#allows for customising the loading bar (loadingbar:<start-string> <fill>)
 loadingbar:YIP E
 #loadingbar: A
+
+#size of a chunk when chunking (default 20000)
+chunksize:20000
+
+#allows you to customise what to ignore (ignore:<pattern1>|<pattern2>...)
+ignore:node_modules|dist|\.git|\.vs|\.vscode|\.idea|\.cache|\.next|\.nuxt|\.output|\.expo|\.expo-shared|package-lock\.json|yarn\.lock|pnpm-lock\.yaml|\.log|\.env|frontend-build|backend-build|dist|build|out|bin|obj|combine\.ps1|COMBINER\.bat|Makefile

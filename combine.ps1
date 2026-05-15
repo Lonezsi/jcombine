@@ -1,50 +1,50 @@
 # =========================
-# CLI PARAMS (top)
+# CLI PARAMS
 # =========================
 param(
     [string]$arg
 )
 
-if ($arg -eq "--version") {
-    $versionFile = Join-Path (Split-Path $MyInvocation.MyCommand.Path) "version.txt"
-    if (Test-Path $versionFile) {
-        Get-Content $versionFile
-    } else {
-        "0.0.0"
+# =========================
+# config
+# =========================
+
+$configPath = Join-Path $PSScriptRoot "config.txt"
+$startString = "YIP"
+$repeatingChar = "E"
+
+$chunkSize = 20000
+
+$ignorePatterns = "\.env"
+
+if (Test-Path $configPath) {
+    $configLines = Get-Content $configPath
+    foreach ($line in $configLines) {
+        $trimmed = $line.TrimStart()
+        if ($trimmed -match '^#' -or $trimmed -eq '') { continue }
+        if ($trimmed -match '^loadingbar:\s*(.+)$') {
+            $rawValue = $matches[1].Trim()
+            $spaceIndex = $rawValue.IndexOf(' ')
+            if ($spaceIndex -gt 0) {
+                $startString   = $rawValue.Substring(0, $spaceIndex)
+                $repeatingChar = $rawValue.Substring($spaceIndex + 1).Trim()
+            } else {
+                $startString   = ""
+                $repeatingChar = $rawValue
+            }
+            continue
+        }
+
+        if ($trimmed -match '^chunksize:\s*(\d+)$') {
+            $chunkSize = [int]$matches[1]
+            continue
+        }
+
+        if ($trimmed -match '^ignore:\s*(.+)$') {
+            $ignorePatterns = $matches[1].Trim()
+            continue
+        }
     }
-    exit 0
-}
-
-if ($arg -eq "--update") {
-    Write-Host "Updating..." -ForegroundColor Yellow
-
-    $installScript = "https://raw.githubusercontent.com/Lonezsi/jcombine/master/install.ps1"
-    irm $installScript | iex
-
-    exit 0
-}
-
-if ($arg -eq "--help") {
-    Write-Host @"
-jcombine
-
-Usage:
-  combine              Run interactive mode
-  combine --version    Show version
-  combine --help       Show help
-  combine --update     Update jcombine
-
-Output modes:
-  chunks  -> chunked AI prompts
-  bundle  -> single file bundle + prompts
-  just    -> raw bundle only
-
-Notes:
-- Must run inside git repo
-- Ignores node_modules, dist, .git
-"@
-
-    exit 0
 }
 
 # =========================
@@ -100,6 +100,109 @@ function say {
     catch {
         Write-Host $m
     }
+}
+
+# =========================
+# ARG PARSING
+# =========================
+
+if ($arg -eq "--version") {
+    $versionFile = Join-Path (Split-Path $MyInvocation.MyCommand.Path) "version.txt"
+    if (Test-Path $versionFile) {
+        Get-Content $versionFile
+    } else {
+        "0.0.0"
+    }
+    exit 0
+}
+
+if ($arg -eq "--update") {
+    say -m "Updating jcombine..." info -Color Yellow
+
+    $installScript = "https://raw.githubusercontent.com/Lonezsi/jcombine/master/install.ps1"
+    irm $installScript | iex
+
+    exit 0
+}
+
+$useGit = $null
+if ($arg -eq "--gitfilter") {
+    if ($args[0] -eq "on") {
+        $useGit = $true
+        say -m "Git-aware filtering enabled." success -Color Green
+    } elseif ($args[0] -eq "off") {
+        $useGit = $false
+        say -m "Git-aware filtering disabled." warning -Color Yellow
+    } else {
+        say -m "Unknown gitfilter option: $($args[0])" error -Color Red
+        exit 1
+    }
+}
+
+if ($arg -eq "--mode") {
+    switch ($args[0]) {
+        "front" { $mode = "front" }
+        "back"  { $mode = "back" }
+        "mix"   { $mode = "mix" }
+        "all"   { $mode = "all" }
+        default {
+            say -m "Unknown mode: $($args[0])" error -Color Red
+            exit 1
+        }
+    }
+}
+
+if ($arg -eq "--outputmode") {
+    switch ($args[0]) {
+        "chunks" { $outputMode = "chunks" }
+        "bundle" { $outputMode = "bundle" }
+        "just"   { $outputMode = "just" }
+        default {
+            say -m "Unknown output mode: $($args[0])" error -Color Red
+            exit 1
+        }
+    }
+}
+
+if ($arg -and $arg -notin @("--help","--mode","--gitfilter","--outputmode")) {
+    say -m "Unknown argument: $arg" error -Color Red
+    say -m "Use --help for usage info." warning -Color Yellow
+    exit 1
+}
+
+if ($arg -eq "--help") {
+    say -m ""
+    say -m "jcombine" -Color Cyan
+    say -m ""
+    say -m "Usage:" -Color Yellow
+    say -m "    combine              Run interactive mode" -Color Gray
+    say -m "    combine --version    Show version" -Color Gray
+    say -m "    combine --help       Show this help" -Color Gray
+    say -m "    combine --update     Update jcombine" -Color Gray
+    say -m "    combine --gitfilter <on|off>     Enable/disable git-aware filtering" -Color Gray
+    say -m "    combine --mode <front|back|mix|all>   Select file filtering mode" -Color Gray
+    say -m "    combine --outputmode <chunks|bundle|just>   Select output mode" -Color Gray
+    say -m ""   
+    say -m "Modes:" -Color Yellow
+    say -m "    front -> frontend files only (.ts/.tsx/.js/.jsx/.css/.html/.md)" -Color DarkGray
+    say -m "    back  -> backend files only (.java/.xml)" -Color DarkGray
+    say -m "    mix   -> frontend + backend (code + docs)" -Color DarkGray
+    say -m "    all   -> everything (no filtering)" -Color DarkGray
+    say -m ""
+    say -m "Output modes:" -Color Yellow
+    say -m "    chunks  -> chunked AI prompts (ideal for LLMs with context limits)" -Color DarkGray
+    say -m "    bundle  -> single file bundle + prompts" -Color DarkGray
+    say -m "    just    -> raw bundle only" -Color DarkGray
+    say -m ""
+    say -m "Notes:" -Color Yellow
+    say -m "    - Must run inside a git repo" -Color DarkGray
+    say -m "    - Ignored files are configurable (config.txt)" -Color DarkGray
+    say -m "    - Loading bar style and chunk size are configurable" -Color DarkGray
+    say -m ""
+    say -m "Config path: $configPath" -Color Magenta
+    say -m ""
+
+    exit 0
 }
 
 # =========================
@@ -212,12 +315,14 @@ Set-Location $root
 # =========================
 # GIT MODE MENU
 # =========================
-$gitRaw = Show-TUIMenu "Use git-aware filtering?" @(
-    "[yes] - only changes (added/modified/untracked)",
-    "[no] - full scan"
-)
+if ($useGit -eq $null) {
+    $gitRaw = Show-TUIMenu "Use git-aware filtering?" @(
+        "[yes] - only changes (added/modified/untracked)",
+        "[no] - full scan"
+    )
 
-$useGit = $gitRaw.StartsWith("yes")
+    $useGit = $gitRaw.StartsWith("yes")
+}
 
 # =========================
 # FILE COLLECTION (FIRST!)
@@ -245,12 +350,15 @@ if ($useGit) {
 $allFiles = $allFiles | Sort-Object -Unique
 
 # =========================
-# MODE SELECTION (NOW SAFE)
+# MODE SELECTION
 # =========================
-$modeRaw = Show-TUIMenu "Select mode:" ($modeOptions.label)
+$selectedMode = $null
 
-$selectedMode = $modeOptions | Where-Object {
-    $modeRaw -eq $_.label
+if ($mode) {
+    $selectedMode = $modeOptions | Where-Object { $mode -eq $_.key }
+} else {
+    $modeRaw = Show-TUIMenu "Select mode:" ($modeOptions.label)
+    $selectedMode = $modeOptions | Where-Object { $modeRaw -eq $_.label }
 }
 
 if (-not $selectedMode) {
@@ -261,17 +369,14 @@ if (-not $selectedMode) {
 # =========================
 # FILTER
 # =========================
+$filtered = 0
 $files = $allFiles | Where-Object {
 
     $p = $_
 
-    # ignore tooling
-    if ($p -match "combine\.ps1|COMBINER\.bat|Makefile") {
-        return $false
-    }
-
-    # ignore junk
-    if ($p -match "node_modules|dist|\.git|\.vs|\.vscode|\.idea|\.cache|\.next|\.nuxt|\.output|\.expo|\.expo-shared|package-lock\.json|yarn\.lock|pnpm-lock\.yaml|\.log|\.env") {
+    #ignore from config
+    if ($p -match $ignorePatterns) {
+        $filtered++
         return $false
     }
 
@@ -343,16 +448,18 @@ Possible reasons:
 # =========================
 # OUTPUT MODE
 # =========================
-$outputModeRaw = Show-TUIMenu "Select output mode:" @(
-    "[chunks] - chunks + prompts",
-    "[bundle] - bundle + prompts",
-    "[just] - just bundle"
-)
+if (-not $outputMode) {
+    $outputModeRaw = Show-TUIMenu "Select output mode:" @(
+        "[chunks] - chunks + prompts (ideal for LLMs with context limits | chunksize: $chunkSize chars (configurable))",
+        "[bundle] - bundle + prompts (ideal for human review)",
+        "[just] - just bundle (no prompts, no chunking, raw output - ideal for pasting into code editors or sharing as file)"
+    )
 
-$outputMode = switch -Regex ($outputModeRaw) {
-    "^\[chunks\]" { "chunks" }
-    "^\[bundle\]" { "bundle" }
-    "^\[just\]"   { "just" }
+    $outputMode = switch -Regex ($outputModeRaw) {
+        "^\[chunks\]" { "chunks" }
+        "^\[bundle\]" { "bundle" }
+        "^\[just\]"   { "just" }
+    }
 }
 
 # =========================
@@ -372,31 +479,6 @@ $currentFile = 0
 
 say -m ""
 say -m "Building bundle..." info
-
-# ---- LOAD LOADING BAR CONFIG ----
-$configPath = Join-Path $PSScriptRoot "config.txt"
-$startString = "YIP"
-$repeatingChar = "E"
-
-if (Test-Path $configPath) {
-    $configLines = Get-Content $configPath
-    foreach ($line in $configLines) {
-        $trimmed = $line.TrimStart()
-        if ($trimmed -match '^#' -or $trimmed -eq '') { continue }
-        if ($trimmed -match '^loadingbar:\s*(.+)$') {
-            $rawValue = $matches[1].Trim()
-            $spaceIndex = $rawValue.IndexOf(' ')
-            if ($spaceIndex -gt 0) {
-                $startString   = $rawValue.Substring(0, $spaceIndex)
-                $repeatingChar = $rawValue.Substring($spaceIndex + 1).Trim()
-            } else {
-                $startString   = ""
-                $repeatingChar = $rawValue
-            }
-            break
-        }
-    }
-}
 
 # ---- HIDE CURSOR & BUILD ----
 $originalCursorVisible = [Console]::CursorVisible
@@ -439,6 +521,7 @@ finally {
 # =========================
 # COPY TO CLIPBOARD
 # =========================
+<# temporarily disabled due to random clipboard issues - will re-enable in future
 try {
 
     Set-Clipboard -Path $outFile
@@ -462,8 +545,11 @@ catch {
         say -m ""
         say -m "Failed to copy bundle to clipboard" warning
     }
-}
-
+}#>
+say -m ""
+say -m "(Filtered out: $filtered ) (Clipboard copy temporarily disabled)"-Color DarkGray
+say -m "files config can be found here: $configPath" -Color DarkGray
+say -m ""
 say -m "Bundle created: $outFile" success
 
 # =========================
@@ -519,7 +605,6 @@ if ($outputMode -eq "bundle") {
 # =========================
 # CHUNKING
 # =========================
-$chunkSize = 20000
 $content = Get-Content $outFile -Raw
 
 Get-ChildItem (Join-Path $outDir "chunk_*.txt") -ErrorAction SilentlyContinue | Remove-Item

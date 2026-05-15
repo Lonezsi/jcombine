@@ -1,69 +1,105 @@
 # jcombine
 
-PowerShell simple crudely implemented tool that bundles a git repository into a single text file or chunked prompt format for AI tools.
+A PowerShell tool that packages a git repository into a single text file or chunked AI‑ready prompts, right from your terminal.
 
-## Features
+## 🚀 Installation
 
-- Git-aware file selection (tracked, modified, untracked)
-- Mode filtering (frontend, backend, mixed, full repo)
-- Bundle output or chunked output
-- AI prompt templates included
-- Clipboard copy support
-- TUI selection menu
+Run this in PowerShell (admin not required):
 
-## Requirements
+powershell
 
-- Windows
-- PowerShell 5+ or PowerShell 7+
-- Git installed and available in PATH
-
-## Install
-
-Run in PowerShell:
-
-```powershell
+```
 irm https://raw.githubusercontent.com/Lonezsi/jcombine/master/install.ps1 | iex
 ```
 
-Restart the terminal after install.
+## ✨ Features
 
-## Usage
+- **Git‑aware** – collect only changed, tracked, and untracked files (or scan everything)
+- **Mode filters** – `front`, `back`, `mix`, `all` to target specific parts of your repo
+- **Three output styles**
+  - `chunks` – split for LLMs with context limits
+  - `bundle` – one file plus start/end prompts
+  - `just` – raw bundle, no prompts, no chunking
+- **Interactive TUI** – select options with arrow keys and Enter, or use **CLI flags** for scripting
+- **Customisable loading bar** and **chunk size** via `config.txt`
+- **Configurable ignore patterns** – exclude any files or folders you want
+- **Self‑update** – `combine --update` fetches the latest version
 
-Run inside any git repository:
+## 📋 Requirements
 
-```powershell
+- Windows
+- PowerShell 5.1+ or PowerShell 7+
+- Git installed and available in `PATH`
+
+Then restart your terminal.
+The command combine will now be available everywhere.
+
+## ⌨️ Usage
+
+Interactive mode
+Navigate into any git repository and run:
+
+powershell
 combine
-```
+Follow the menus to choose:
 
-You will be prompted to:
+Git‑aware filtering (yes/no)
 
-- Select git mode (changes only or full scan)
-- Select project mode (front, back, mix, all)
-- Select output mode (chunks, bundle, just bundle)
+Project mode (front, back, mix, all)
 
-## Output modes
+Output mode (chunks, bundle, just)
 
-- `chunks` — Splits repository into multiple files with AI prompts per chunk.
-- `bundle` — Creates a single bundled file with optional prompts.
-- `just` — Creates only the bundle without prompts or chunking.
+CLI flags (no menus)
+powershell
+combine --version # Show version
+combine --help # Show help
+combine --update # Download latest version
+combine --gitfilter on|off # Force git‑aware filtering on/off
+combine --mode front|back|mix|all # Pre‑select project mode
+combine --outputmode chunks|bundle|just # Pre‑select output mode
+Example – directly create a full‑repo bundle without any prompts:
 
-## Output location
+powershell
+combine --gitfilter off --mode all --outputmode just
 
-- `chunks/project-bundle.txt`
-- `chunks/chunk_*.txt`
+## 📂 Output
 
-## Copy tool
+Everything lands in the output folder (created next to the combine.ps1 script).
 
-After generation, run:
+project-bundle.txt – the combined file
 
-```powershell
-copy_chunks
-```
+prompt_start.txt / prompt_end.txt – AI prompt wrappers (when using bundle)
 
-This will copy each chunk to the clipboard one by one for pasting into an AI tool.
+chunk\_\*.txt – each chunk with an embedded prompt (when using chunks)
 
-## Notes
+chunk_end_prompt.txt – the final instruction after all chunks
 
-- Large repos may take time to process.
-- `node_modules`, `dist`, `.git` are ignored by default.
-- Chunk size is fixed in script (20k chars).
+If no files match your selection, an EMPTY.txt is created to signal tooling compatibility.
+
+## ⚙️ Configuration
+
+The file config.txt sits next to combine.ps1. You can edit these values:
+
+Key Example Description
+loadingbar: YIP E Start string and repeating character for progress bar
+chunksize: 20000 Max characters per chunk
+ignore: node_modules|dist|\.git Regex patterns to exclude files (pipe | separated)
+Lines starting with # are comments and are ignored.
+
+## 🔔 Notes
+
+Must be run inside a git repository.
+
+Large repos may take a while – the progress bar shows current status.
+
+Clipboard copying is temporarily disabled due to random issues; it will be re‑enabled in a future release.
+
+node_modules, dist, .git, and common build/cache folders are ignored by default, but you can change this in config.txt.
+
+## 🛠️ Development
+
+Clone the repo, make changes, and test locally by running combine.ps1 directly.
+
+Contributions and bug reports are welcome on GitHub.
+
+Made with ❤️ for a smoother AI‑assisted workflow.
