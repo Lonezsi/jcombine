@@ -17,6 +17,12 @@ $chunkSize = 20000
 
 $ignorePatterns = "\.env"
 
+$customExts        = @{}         # e.g. $customExts["front"] = @(".ts", ...)
+$customRoots = @{}         # e.g. $customRoots["front"] = @("src/frontend", ...)
+$promptStart       = $null
+$promptMiddle      = $null
+$promptEnd         = $null
+
 if (Test-Path $configPath) {
     $configLines = Get-Content $configPath
     foreach ($line in $configLines) {
@@ -35,16 +41,116 @@ if (Test-Path $configPath) {
             continue
         }
 
+        # chunk size
         if ($trimmed -match '^chunksize:\s*(\d+)$') {
             $chunkSize = [int]$matches[1]
             continue
         }
 
+        # ignore patterns (regex)
         if ($trimmed -match '^ignore:\s*(.+)$') {
             $ignorePatterns = $matches[1].Trim()
             continue
         }
+
+        # Custom extensions per mode
+        if ($trimmed -match '^mode_exts:\s*([^|]+)\|(.+)$') {
+            $modeKey = $matches[1].Trim().ToLower()
+            $extsRaw = $matches[2].Trim()
+            if ($extsRaw -eq '*') {
+                $customExts[$modeKey] = @('*')
+            } else {
+                # Split by comma, clean up each extension
+                $exts = $extsRaw -split ',' | ForEach-Object { $_.Trim() }
+                # Ensure each starts with a dot (unless it's '*')
+                $exts = $exts | ForEach-Object { if ($_ -ne '*') { if ($_ -notmatch '^\.') { ".$_" } else { $_ } } else { $_ } }
+                $customExts[$modeKey] = $exts
+            }
+
+            continue
+        }
+
+        # Custom roots per mode
+        if ($trimmed -match '^mode_roots:\s*([^|]+)\|(.*)$') {
+            $modeKey = $matches[1].Trim().ToLower()
+            $rootsRaw = $matches[2].Trim()
+            if ($rootsRaw -eq '') {
+                $customRoots[$modeKey] = @('')
+            } else {
+                $roots = $rootsRaw -split ',' | ForEach-Object { $_.Trim() }
+                # Ensure empty entries become empty string (for 'all')
+                $roots = $roots | ForEach-Object { if ($_ -eq '') { '' } else { $_ } }
+                $customRoots[$modeKey] = $roots
+            }
+            continue
+        }
+
+        # Custom prompts (replace \n with actual newlines)
+        if ($trimmed -match '^prompt_start:\s*(.*)$') {
+            $promptStart = $matches[1].Trim() -replace '\\n', "`r`n"
+            continue
+        }
+        if ($trimmed -match '^prompt_middle:\s*(.*)$') {
+            $promptMiddle = $matches[1].Trim() -replace '\\n', "`r`n"
+            continue
+        }
+        if ($trimmed -match '^prompt_end:\s*(.*)$') {
+            $promptEnd = $matches[1].Trim() -replace '\\n', "`r`n"
+            continue
+        }
     }
+}
+
+# =========================
+# DEFAULTS FOR CUSTOM EXTS
+# =========================
+$defaultExts = @{
+    front = @(".ts", ".tsx", ".js", ".jsx", ".css", ".html", ".md")
+    back  = @(".java", ".xml")
+    all   = @("*")
+}
+
+# =========================
+# DEFAULTS FOR CUSTOM ROOTS
+# =========================
+$defaultRoots = @{
+    front = @("frontend")
+    back  = @("backend")
+    all   = @("")
+}
+
+foreach ($key in @("front", "back", "all")) {
+    if (-not $customRoots.ContainsKey($key) -or -not $customRoots[$key]) {
+        $customRoots[$key] = $defaultRoots[$key]
+    }
+}
+
+# If mix not explicitly defined, create it from front + back
+if (-not $customRoots.ContainsKey("mix") -or -not $customRoots["mix"]) {
+    $customRoots["mix"] = ($customRoots["front"] + $customRoots["back"]) | Sort-Object -Unique
+}
+
+# =========================
+# VERSION
+# =========================
+
+$versionFile = Join-Path (Split-Path $MyInvocation.MyCommand.Path) "version.txt"
+if (Test-Path $versionFile) {
+    $version = Get-Content $versionFile
+} else {
+    $version = "0.0.0"
+}
+
+# Ensure each known mode has a definition
+foreach ($key in @("front", "back", "all")) {
+    if (-not $customExts.ContainsKey($key) -or -not $customExts[$key]) {
+        $customExts[$key] = $defaultExts[$key]
+    }
+}
+
+# If mix not explicitly defined, create it from front + back
+if (-not $customExts.ContainsKey("mix") -or -not $customExts["mix"]) {
+    $customExts["mix"] = ($customExts["front"] + $customExts["back"]) | Sort-Object -Unique
 }
 
 # =========================
@@ -107,12 +213,7 @@ function say {
 # =========================
 
 if ($arg -eq "--version") {
-    $versionFile = Join-Path (Split-Path $MyInvocation.MyCommand.Path) "version.txt"
-    if (Test-Path $versionFile) {
-        Get-Content $versionFile
-    } else {
-        "0.0.0"
-    }
+    say -m "v$version" info -Color Cyan
     exit 0
 }
 
@@ -164,6 +265,17 @@ if ($arg -eq "--outputmode") {
     }
 }
 
+if ($arg -eq "--config") {
+    try {
+        notepad $configPath
+        exit 0
+    }
+    catch {
+        say -m "Failed to open config file: $configPath" error -Color Red
+        exit 1
+    }
+}
+
 if ($arg -and $arg -notin @("--help","--mode","--gitfilter","--outputmode")) {
     say -m "Unknown argument: $arg" error -Color Red
     say -m "Use --help for usage info." warning -Color Yellow
@@ -176,7 +288,7 @@ if ($arg -eq "--help") {
     say -m ""
     say -m "Usage:" -Color Yellow
     say -m "    combine              Run interactive mode" -Color Gray
-    say -m "    combine --version    Show version" -Color Gray
+    say -m "    combine --version    Show version (current: $version)" -Color Gray
     say -m "    combine --help       Show this help" -Color Gray
     say -m "    combine --update     Update jcombine" -Color Gray
     say -m "    combine --gitfilter <on|off>     Enable/disable git-aware filtering" -Color Gray
@@ -184,14 +296,14 @@ if ($arg -eq "--help") {
     say -m "    combine --outputmode <chunks|bundle|just>   Select output mode" -Color Gray
     say -m ""   
     say -m "Modes:" -Color Yellow
-    say -m "    front -> frontend files only (.ts/.tsx/.js/.jsx/.css/.html/.md)" -Color DarkGray
-    say -m "    back  -> backend files only (.java/.xml)" -Color DarkGray
-    say -m "    mix   -> frontend + backend (code + docs)" -Color DarkGray
-    say -m "    all   -> everything (no filtering)" -Color DarkGray
+    say -m "    front -> frontend files only ($($customExts['front'] -join ', ')) from $($customRoots['front'] -join ', ')" -Color DarkGray
+    say -m "    back  -> backend files only ($($customExts['back'] -join ', ')) from $($customRoots['back'] -join ', ')" -Color DarkGray
+    say -m "    mix   -> frontend + backend ($($customExts['mix'] -join ', ')) from $($customRoots['mix'] -join ', ')" -Color DarkGray
+    say -m "    all   -> everything (no filtering) from command run location (no filtering)" -Color DarkGray
     say -m ""
     say -m "Output modes:" -Color Yellow
-    say -m "    chunks  -> chunked AI prompts (ideal for LLMs with context limits)" -Color DarkGray
-    say -m "    bundle  -> single file bundle + prompts" -Color DarkGray
+    say -m "    chunks  -> chunked AI prompts (splits into $chunkSize-character segments (configurable))" -Color DarkGray
+    say -m "    bundle  -> single file bundle + prompts (prompts configurable)" -Color DarkGray
     say -m "    just    -> raw bundle only" -Color DarkGray
     say -m ""
     say -m "Notes:" -Color Yellow
@@ -211,27 +323,27 @@ if ($arg -eq "--help") {
 $modeOptions = @(
     @{
         key = "front"
-        label = "[Front] - frontend only (.ts/.tsx/.js/.jsx/.css/.html/.md)"
-        roots = @("telco-frontend")
-        exts = @(".ts",".tsx",".js",".jsx",".css",".html",".md")
+        label = "[Front] - frontend only ($($customExts['front'] -join ', ')) from $($customRoots['front'] -join ', ')"
+        roots = $customRoots['front']
+        exts = $customExts['front']
     },
     @{
         key = "back"
-        label = "[Back] - backend only (.java/.xml)"
-        roots = @("telco-backend")
-        exts = @(".java",".xml")
+        label = "[Back] - backend only ($($customExts['back'] -join ', ')) from $($customRoots['back'] -join ', ')"
+        roots = $customRoots['back']
+        exts = $customExts['back']
     },
     @{
         key = "mix"
-        label = "[Mix] - frontend + backend (code + docs)"
-        roots = @("telco-frontend","telco-backend")
-        exts = @(".ts",".tsx",".js",".jsx",".css",".html",".md",".java",".xml")
+        label = "[Mix] - frontend + backend ($($customExts['mix'] -join ', ')) from $($customRoots['mix'] -join ', ')"
+        roots = $customRoots['mix']
+        exts = $customExts['mix']
     },
     @{
         key = "all"
-        label = "[All] - full repo (everything)"
-        roots = @("")
-        exts = @("*")
+        label = "[All] - full repo (everything) from command run location (no filtering)"
+        roots = $customRoots['all']
+        exts = $customExts['all']
     }
 )
 
@@ -290,6 +402,10 @@ function Show-TUIMenu {
                 [Console]::CursorVisible = $true
                 return $Options[$selected]
             }
+            "Escape"    {
+                [Console]::CursorVisible = $true
+                return $null
+            }
         }
     }
 }
@@ -320,6 +436,10 @@ if ($useGit -eq $null) {
         "[yes] - only changes (added/modified/untracked)",
         "[no] - full scan"
     )
+    if (-not $gitRaw) {
+        say -m "Selection shut down by user. Exiting..." error
+        exit 1
+    }
 
     $useGit = $gitRaw.StartsWith("yes")
 }
@@ -362,7 +482,7 @@ if ($mode) {
 }
 
 if (-not $selectedMode) {
-    say -m "Invalid mode selection" error
+    say -m "Selection shut down by user. Exiting..." error
     exit 1
 }
 
@@ -462,6 +582,11 @@ if (-not $outputMode) {
     }
 }
 
+if (-not $outputMode) {
+    say -m "Selection shut down by user. Exiting..." error
+    exit 1
+}
+
 # =========================
 # OUTPUT
 # =========================
@@ -555,17 +680,28 @@ say -m "Bundle created: $outFile" success
 # =========================
 # PROMPTS
 # =========================
-$startPrompt = @"
+if ($promptStart) {
+    $startPrompt = $promptStart
+} else { 
+    $startPrompt = @"
 Here is my codebase. Please read it carefully.
 Reply only with "OK".
 I will send more parts after this.
 "@
+}
 
-$middlePrompt = @"
+if ($promptMiddle) {
+    $middlePrompt = $promptMiddle
+} else {
+    $middlePrompt = @"
 Next part of the code. Reply only "OK".
 "@
+}
 
-$endPrompt = @"
+if ($promptEnd) {
+    $endPrompt = $promptEnd
+} else {
+    $endPrompt = @"
 This is the full codebase.
 
 Now:
@@ -576,6 +712,7 @@ Now:
 
 Ask questions if something is unclear.
 "@
+}
 
 # =========================
 # JUST BUNDLE

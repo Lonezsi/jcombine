@@ -9,3 +9,24 @@ chunksize:20000
 
 #allows you to customise what to ignore (ignore:<pattern1>|<pattern2>...)
 ignore:node_modules|dist|\.git|\.vs|\.vscode|\.idea|\.cache|\.next|\.nuxt|\.output|\.expo|\.expo-shared|package-lock\.json|yarn\.lock|pnpm-lock\.yaml|\.log|\.env|frontend-build|backend-build|dist|build|out|bin|obj|combine\.ps1|COMBINER\.bat|Makefile
+
+# ----- Custom file extensions per mode -----
+# Format: mode_exts:<mode>|<ext1>,<ext2>,...
+# If omitted, the built-in default is used.
+# Mix mode is automatically the union of front and back (unless overridden).
+mode_exts:front|.ts,.tsx,.js,.jsx,.css,.html,.md
+mode_exts:back|.java,.xml,.properties
+# mode_exts:mix|.ts,.tsx,.java,.md
+
+# ----- Roots -----
+mode_roots:front|src/frontend,src/components
+mode_roots:back|src/backend
+mode_roots:mix|src
+mode_roots:all|
+
+# ----- Custom AI prompts -----
+# Each line is a multi-line prompt stored as a single line in config.
+# Use \n to indicate a newline (or you can change the delimiter).
+prompt_start:Here is my codebase. Please read it carefully.\nReply only with "OK".\nI will send more parts after this.
+prompt_middle:Next part of the code. Reply only "OK".
+prompt_end:This is the full codebase.\n\nNow:\n- analyze architecture\n- find logic issues\n- suggest improvements\n- point out edge cases\n\nAsk questions if something is unclear.
