@@ -109,3 +109,5 @@ Write-Host "Restart terminal then run: combine" -ForegroundColor Yellow
 # restore original working directory (if possible)
 # =========================
 try { Set-Location $origLocation } catch { }
+
+Write-Host "$runDir" -ForegroundColor Green
