@@ -5,6 +5,14 @@ $runDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
 Write-Host "Installing / Updating jcombine..." -ForegroundColor Cyan
 
+# Save original working directory so install doesn't change caller's location
+$origLocation = Get-Location
+
+function Restore-And-Exit([int]$code) {
+    try { Set-Location $origLocation } catch { }
+    exit $code
+}
+
 # =========================
 # ENSURE INSTALL DIR EXISTS (IMPORTANT FIX)
 # =========================
@@ -21,7 +29,7 @@ if (-not (Test-Path (Join-Path $installDir ".git"))) {
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Clone failed." -ForegroundColor Red
-        exit 1
+        Restore-And-Exit 1
     }
 
 } else {
@@ -37,7 +45,7 @@ if (-not (Test-Path (Join-Path $installDir ".git"))) {
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Update failed." -ForegroundColor Red
-        exit 1
+        Restore-And-Exit 1
     }
 }
 
@@ -98,6 +106,6 @@ Write-Host "Installed / Updated successfully." -ForegroundColor Green
 Write-Host "Restart terminal then run: combine" -ForegroundColor Yellow
 
 # =========================
-# reset location to original script dir
+# restore original working directory (if possible)
 # =========================
-Set-Location $runDir
+try { Set-Location $origLocation } catch { }
