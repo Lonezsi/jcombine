@@ -3,6 +3,8 @@ $installDir = "$env:USERPROFILE\jcombine"
 $repoUrl = "https://github.com/$repo.git"
 $runDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
+write-Host "$runDir" -ForegroundColor Cyan
+
 Write-Host "Installing / Updating jcombine..." -ForegroundColor Cyan
 
 # Save original working directory so install doesn't change caller's location
