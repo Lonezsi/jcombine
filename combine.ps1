@@ -286,6 +286,8 @@ $mode = $null
 $outputMode = $null
 $cliArgs = $args
 
+$targetDir = $null
+
 $useGit = $null
 $mode = $null
 $outputMode = $null
@@ -295,6 +297,17 @@ if (-not $cliArgs) { $cliArgs = @() }
 $i = 0
 while ($i -lt $cliArgs.Count) {
     $a = $cliArgs[$i]
+    # If the argument does not start with a dash, treat it as the target directory
+    if ($a -notlike '-*') {
+        if (-not $targetDir) {
+            $targetDir = $a
+            $i += 1
+            continue
+        } else {
+            say -m "Multiple directories provided: $a" error -Color Red
+            exit 1
+        }
+    }
     switch ($a) {
         '--version' {
             say -m "v$version" info -Color Cyan
@@ -446,6 +459,23 @@ while ($i -lt $cliArgs.Count) {
         }
     }
     $i += 1
+}
+
+if ($targetDir) {
+    try {
+        $resolved = Resolve-Path -Path $targetDir -ErrorAction Stop
+        $targetPath = $resolved.Path
+        if (-not (Test-Path $targetPath -PathType Container)) {
+            say -m "Not a directory: $targetDir" error -Color Red
+            exit 1
+        }
+        Set-Location $targetPath
+        say -m "Running in directory: $targetPath" info -Color Cyan
+    }
+    catch {
+        say -m "Invalid directory: $targetDir" error -Color Red
+        exit 1
+    }
 }
 
     

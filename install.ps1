@@ -1,6 +1,7 @@
 $repo = "Lonezsi/jcombine"
 $installDir = "$env:USERPROFILE\jcombine"
 $repoUrl = "https://github.com/$repo.git"
+$runDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
 Write-Host "Installing / Updating jcombine..." -ForegroundColor Cyan
 
@@ -95,3 +96,8 @@ Set-ItemProperty -Path "$regPath\command" -Name "(Default)" -Value "powershell -
 
 Write-Host "Installed / Updated successfully." -ForegroundColor Green
 Write-Host "Restart terminal then run: combine" -ForegroundColor Yellow
+
+# =========================
+# reset location to original script dir
+# =========================
+Set-Location $runDir
