@@ -1,10 +1,17 @@
 $repo = "Lonezsi/jcombine"
 $installDir = "$env:USERPROFILE\jcombine"
 $repoUrl = "https://github.com/$repo.git"
-$runDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
-write-Host "$runDir" -ForegroundColor Cyan
-
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Host "Git is not installed or not in PATH. Please install Git to continue." -ForegroundColor Red
+    Restore-And-Exit 1
+}
+if (-not (Test-Path $installDir)) {
+    Write-Host "No existing install found. Installing jcombine..." -ForegroundColor Cyan
+} else {
+    Write-Host "Existing install found. Updating jcombine..." -ForegroundColor Cyan
+    write-Host "v$(Get-Content $versionFile)" -ForegroundColor Cyan
+}
 Write-Host "Installing / Updating jcombine..." -ForegroundColor Cyan
 
 # Save original working directory so install doesn't change caller's location
@@ -106,10 +113,3 @@ Set-ItemProperty -Path "$regPath\command" -Name "(Default)" -Value "powershell -
 
 Write-Host "Installed / Updated successfully. v$(Get-Content $versionFile)" -ForegroundColor Green
 Write-Host "Restart terminal then run: combine" -ForegroundColor Yellow
-
-
-Write-Host "$runDir" -ForegroundColor Green
-# =========================
-# restore original working directory (if possible)
-# =========================
-try { Set-Location $origLocation } catch { }

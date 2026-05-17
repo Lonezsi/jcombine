@@ -317,6 +317,7 @@ while ($i -lt $cliArgs.Count) {
             say -m "Updating jcombine..." info -Color Yellow
             $installScript = "https://raw.githubusercontent.com/Lonezsi/jcombine/master/install.ps1"
             irm $installScript | iex
+            set-location $PSScriptRoot
             exit 0
         }
         '--gitfilter' {
