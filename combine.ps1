@@ -1,7 +1,57 @@
 # =========================
-# CLI PARAMS
-# (use raw $args so PowerShell doesn't try to bind named params)
+# SHORT & SAFE COLOR OUTPUT
 # =========================
+function say {
+    param(
+        [string]$m,
+
+        [ValidateSet('info','success','error','warning','normal')]
+        [string]$t = 'normal',
+
+        [ConsoleColor]$Color,
+
+        [switch]$NoNewLine
+    )
+
+    try {
+        $params = @{}
+        if ($NoNewLine) { $params["NoNewLine"] = $true }
+
+        switch ($t) {
+
+            'info' {
+                Write-Host "[INFO] " -ForegroundColor Cyan -NoNewline
+                Write-Host $m -ForegroundColor Gray @params
+            }
+
+            'success' {
+                Write-Host "[SUCCESS] " -ForegroundColor Green -NoNewline
+                Write-Host $m @params
+            }
+
+            'error' {
+                Write-Host "[ERROR] " -ForegroundColor Red -NoNewline
+                Write-Host $m -ForegroundColor Red @params
+            }
+
+            'warning' {
+                Write-Host "[WARNING] " -ForegroundColor Yellow -NoNewline
+                Write-Host $m @params
+            }
+
+            default {
+                if ($Color) {
+                    Write-Host $m -ForegroundColor $Color @params
+                } else {
+                    Write-Host $m @params
+                }
+            }
+        }
+    }
+    catch {
+        Write-Host $m
+    }
+}
 
 # =========================
 # config
@@ -222,60 +272,6 @@ if (-not $customExts.ContainsKey("mix") -or -not $customExts["mix"]) {
     $customExts["mix"] = ($customExts["front"] + $customExts["back"]) | Sort-Object -Unique
 }
 
-# =========================
-# SHORT & SAFE COLOR OUTPUT
-# =========================
-function say {
-    param(
-        [string]$m,
-
-        [ValidateSet('info','success','error','warning','normal')]
-        [string]$t = 'normal',
-
-        [ConsoleColor]$Color,
-
-        [switch]$NoNewLine
-    )
-
-    try {
-        $params = @{}
-        if ($NoNewLine) { $params["NoNewLine"] = $true }
-
-        switch ($t) {
-
-            'info' {
-                Write-Host "[INFO] " -ForegroundColor Cyan -NoNewline
-                Write-Host $m -ForegroundColor Gray @params
-            }
-
-            'success' {
-                Write-Host "[SUCCESS] " -ForegroundColor Green -NoNewline
-                Write-Host $m @params
-            }
-
-            'error' {
-                Write-Host "[ERROR] " -ForegroundColor Red -NoNewline
-                Write-Host $m -ForegroundColor Red @params
-            }
-
-            'warning' {
-                Write-Host "[WARNING] " -ForegroundColor Yellow -NoNewline
-                Write-Host $m @params
-            }
-
-            default {
-                if ($Color) {
-                    Write-Host $m -ForegroundColor $Color @params
-                } else {
-                    Write-Host $m @params
-                }
-            }
-        }
-    }
-    catch {
-        Write-Host $m
-    }
-}
 
 # =========================
 # ARG PARSING (supports multiple flags)
