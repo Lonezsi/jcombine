@@ -105,9 +105,9 @@ Set-ItemProperty -Path "$regPath\command" -Name "(Default)" -Value "powershell -
 Write-Host "Installed / Updated successfully." -ForegroundColor Green
 Write-Host "Restart terminal then run: combine" -ForegroundColor Yellow
 
+
+Write-Host "$runDir" -ForegroundColor Green
 # =========================
 # restore original working directory (if possible)
 # =========================
 try { Set-Location $origLocation } catch { }
-
-Write-Host "$runDir" -ForegroundColor Green
