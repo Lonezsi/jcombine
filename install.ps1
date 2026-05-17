@@ -102,7 +102,7 @@ $script = Join-Path $env:USERPROFILE "jcombine\jpaster.ps1"
 Set-ItemProperty -Path "$regPath\command" -Name "(Default)" -Value "powershell -NoProfile -ExecutionPolicy Bypass -File `"$script`""
 #>
 
-Write-Host "Installed / Updated successfully." -ForegroundColor Green
+Write-Host "Installed / Updated successfully. v$(Get-Content $versionFile)" -ForegroundColor Green
 Write-Host "Restart terminal then run: combine" -ForegroundColor Yellow
 
 
