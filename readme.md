@@ -22,6 +22,7 @@ Restart your terminal afterward. The `combine` command will be available everywh
   - `just` – raw bundle, no prompts, no chunking
 - **Interactive TUI** – arrow keys + Enter, or bypass with CLI flags
 - **Customisable loading bar**, chunk size, ignore patterns, and **AI prompts** – all in `config.txt`
+- **Local project overrides** – place a `.jcombine-config` in a repo to override the global `config.txt` values for that directory
 - **Right‑click context menus**
   - Right‑click an **empty space in any folder** → `jcombine` runs the tool
   - Right‑click **any file** → `jpaste` lets you pick a chunk or bundle and copies it to the clipboard
@@ -55,12 +56,19 @@ combine --gitfilter on|off            Force git‑aware filtering on/off
 combine --mode front|back|mix|all     Preselect project mode
 combine --outputmode chunks|bundle|just  Preselect output mode
 combine --config                      Open config.txt in Notepad
+combine --create-config               Generate a local .jcombine-config inferred from the project
 ```
 
 Example – full repo, no prompts, directly:
 
 ```powershell
 combine --gitfilter off --mode all --outputmode just
+```
+
+Flags may be combined (stacked) in any order, for example:
+
+```powershell
+combine --mode front --gitfilter on --outputmode chunks
 ```
 
 ## 📂 Output
@@ -100,6 +108,8 @@ Edit `config.txt` next to `combine.ps1`. All keys are optional – if omitted, s
 | `prompt_end`    | `This is the full codebase...`                  | Prompt after the last chunk (or with `bundle` mode)   |
 
 Lines starting with `#` are comments and ignored.
+
+Local overrides: if a `.jcombine-config` file exists in the directory where `combine` is run, its non-comment lines will override values from the global `config.txt` for that run.
 
 ## 🔔 Notes
 

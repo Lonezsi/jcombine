@@ -1,9 +1,7 @@
 # =========================
 # CLI PARAMS
+# (use raw $args so PowerShell doesn't try to bind named params)
 # =========================
-param(
-    [string]$arg
-)
 
 # =========================
 # config
@@ -97,6 +95,79 @@ if (Test-Path $configPath) {
             continue
         }
     }
+}
+
+# Check for local override config in current working directory
+$localConfigPath = Join-Path (Get-Location) ".jcombine-config"
+if (Test-Path $localConfigPath) {
+    $localConfigLines = Get-Content $localConfigPath
+    foreach ($line in $localConfigLines) {
+        $trimmed = $line.TrimStart()
+        if ($trimmed -match '^#' -or $trimmed -eq '') { continue }
+
+        if ($trimmed -match '^loadingbar:\s*(.+)$') {
+            $rawValue = $matches[1].Trim()
+            $spaceIndex = $rawValue.IndexOf(' ')
+            if ($spaceIndex -gt 0) {
+                $startString   = $rawValue.Substring(0, $spaceIndex)
+                $repeatingChar = $rawValue.Substring($spaceIndex + 1).Trim()
+            } else {
+                $startString   = ""
+                $repeatingChar = $rawValue
+            }
+            continue
+        }
+
+        if ($trimmed -match '^chunksize:\s*(\d+)$') {
+            $chunkSize = [int]$matches[1]
+            continue
+        }
+
+        if ($trimmed -match '^ignore:\s*(.+)$') {
+            $ignorePatterns = $matches[1].Trim()
+            continue
+        }
+
+        if ($trimmed -match '^mode_exts:\s*([^|]+)\|(.+)$') {
+            $modeKey = $matches[1].Trim().ToLower()
+            $extsRaw = $matches[2].Trim()
+            if ([string]::IsNullOrWhiteSpace($extsRaw) -or $extsRaw -eq '*') {
+                $customExts[$modeKey] = @('*')
+            } else {
+                $exts = $extsRaw -split ',' | ForEach-Object { $_.Trim() }
+                $exts = $exts | ForEach-Object { if ($_ -ne '*') { if ($_ -notmatch '^\.') { ".$_" } else { $_ } } else { $_ } }
+                $customExts[$modeKey] = $exts
+            }
+            continue
+        }
+
+        if ($trimmed -match '^mode_roots:\s*([^|]+)\|(.*)$') {
+            $modeKey = $matches[1].Trim().ToLower()
+            $rootsRaw = $matches[2].Trim()
+            if ($rootsRaw -eq '') {
+                $customRoots[$modeKey] = @('')
+            } else {
+                $roots = $rootsRaw -split ',' | ForEach-Object { $_.Trim() }
+                $roots = $roots | ForEach-Object { if ($_ -eq '') { '' } else { $_ } }
+                $customRoots[$modeKey] = $roots
+            }
+            continue
+        }
+
+        if ($trimmed -match '^prompt_start:\s*(.*)$') {
+            $promptStart = $matches[1].Trim() -replace '\\n', "`r`n"
+            continue
+        }
+        if ($trimmed -match '^prompt_middle:\s*(.*)$') {
+            $promptMiddle = $matches[1].Trim() -replace '\\n', "`r`n"
+            continue
+        }
+        if ($trimmed -match '^prompt_end:\s*(.*)$') {
+            $promptEnd = $matches[1].Trim() -replace '\\n', "`r`n"
+            continue
+        }
+    }
+    say -m "Loaded local config: $localConfigPath" info -Color Cyan
 }
 
 # =========================
@@ -207,113 +278,177 @@ function say {
 }
 
 # =========================
-# ARG PARSING
+# ARG PARSING (supports multiple flags)
 # =========================
 
-if ($arg -eq "--version") {
-    say -m "v$version" info -Color Cyan
-    exit 0
-}
-
-if ($arg -eq "--update") {
-    say -m "Updating jcombine..." info -Color Yellow
-
-    $installScript = "https://raw.githubusercontent.com/Lonezsi/jcombine/master/install.ps1"
-    irm $installScript | iex
-
-    exit 0
-}
+$useGit = $null
+$mode = $null
+$outputMode = $null
+$cliArgs = $args
 
 $useGit = $null
-if ($arg -eq "--gitfilter") {
-    if ($args[0] -eq "on") {
-        $useGit = $true
-        say -m "Git-aware filtering enabled." success -Color Green
-    } elseif ($args[0] -eq "off") {
-        $useGit = $false
-        say -m "Git-aware filtering disabled." warning -Color Yellow
-    } else {
-        say -m "Unknown gitfilter option: $($args[0])" error -Color Red
-        exit 1
-    }
-}
+$mode = $null
+$outputMode = $null
 
-if ($arg -eq "--mode") {
-    switch ($args[0]) {
-        "front" { $mode = "front" }
-        "back"  { $mode = "back" }
-        "mix"   { $mode = "mix" }
-        "all"   { $mode = "all" }
-        default {
-            say -m "Unknown mode: $($args[0])" error -Color Red
+if (-not $cliArgs) { $cliArgs = @() }
+
+$i = 0
+while ($i -lt $cliArgs.Count) {
+    $a = $cliArgs[$i]
+    switch ($a) {
+        '--version' {
+            say -m "v$version" info -Color Cyan
+            exit 0
+        }
+        '--update' {
+            say -m "Updating jcombine..." info -Color Yellow
+            $installScript = "https://raw.githubusercontent.com/Lonezsi/jcombine/master/install.ps1"
+            irm $installScript | iex
+            exit 0
+        }
+        '--gitfilter' {
+            if ($i + 1 -ge $cliArgs.Count) { say -m "Missing value for --gitfilter" error -Color Red; exit 1 }
+            $val = $cliArgs[$i + 1]
+            if ($val -eq 'on') { $useGit = $true; say -m "Git-aware filtering enabled." success -Color Green }
+            elseif ($val -eq 'off') { $useGit = $false; say -m "Git-aware filtering disabled." warning -Color Yellow }
+            else { say -m "Unknown gitfilter option: $val" error -Color Red; exit 1 }
+            $i += 1
+        }
+        '--mode' {
+            if ($i + 1 -ge $cliArgs.Count) { say -m "Missing value for --mode" error -Color Red; exit 1 }
+            $val = $cliArgs[$i + 1]
+            switch ($val) {
+                'front' { $mode = 'front' }
+                'back'  { $mode = 'back' }
+                'mix'   { $mode = 'mix' }
+                'all'   { $mode = 'all' }
+                default { say -m "Unknown mode: $val" error -Color Red; exit 1 }
+            }
+            $i += 1
+        }
+        '--outputmode' {
+            if ($i + 1 -ge $cliArgs.Count) { say -m "Missing value for --outputmode" error -Color Red; exit 1 }
+            $val = $cliArgs[$i + 1]
+            switch ($val) {
+                'chunks' { $outputMode = 'chunks' }
+                'bundle' { $outputMode = 'bundle' }
+                'just'   { $outputMode = 'just' }
+                default { say -m "Unknown output mode: $val" error -Color Red; exit 1 }
+            }
+            $i += 1
+        }
+        '--config' {
+            try { notepad $configPath; exit 0 } catch { say -m "Failed to open config file: $configPath" error -Color Red; exit 1 }
+        }
+        '--create-config' {
+            $outPath = Join-Path (Get-Location) ".jcombine-config"
+            if (Test-Path $outPath) { say -m "Local config already exists: $outPath" warning -Color Yellow; exit 1 }
+
+            # Detect candidate root folders
+            $dirs = Get-ChildItem -Directory -Name -ErrorAction SilentlyContinue
+            $frontDirs = $dirs | Where-Object { $_ -match '(?i)front|frontend|front-end' }
+            $backDirs  = $dirs | Where-Object { $_ -match '(?i)back|backend|back-end' }
+
+            # Detect file extensions in the project
+            $files = Get-ChildItem -File -Recurse -ErrorAction SilentlyContinue
+            $exts = $files | ForEach-Object { $_.Extension.ToLower() } | Where-Object { $_ -ne '' } | Sort-Object -Unique
+            $extsList = $exts -join '|'
+
+            $lines = @()
+            $lines += '# This is a local .jcombine-config generated by `combine --create-config`'
+            $lines += '# You can edit these values to customise jcombine for this project.'
+            $lines += ''
+            $lines += '# ----- Loading bar -----'
+            $lines += '#loadingbar:YIP E'
+            $lines += ''
+            $lines += '#size of a chunk when chunking (default 20000)'
+            $lines += '#chunksize:20000'
+            $lines += ''
+            $lines += '#allows you to customise what to ignore (ignore:<pattern1>|<pattern2>...)'
+            if ($ignorePatterns) { $lines += '#ignore:' + $ignorePatterns } else { $lines += '#ignore:node_modules|dist|\.git' }
+            $lines += ''
+            $lines += '#detected extensions in your project:'
+            if ($extsList) { $lines += '#' + $extsList } else { $lines += '#.txt' }
+            $lines += ''
+            $lines += '# ----- Roots -----'
+            $lines += '# root types: front, back, mix, all'
+
+            if ($frontDirs) {
+                foreach ($d in $frontDirs) { $lines += "mode_roots:front|$d" }
+            }
+            if ($backDirs) {
+                foreach ($d in $backDirs) { $lines += "mode_roots:back|$d" }
+            }
+            if ($frontDirs -and $backDirs) {
+                $mix = ($frontDirs + $backDirs) | Sort-Object -Unique
+                $lines += "mode_roots:mix|$($mix -join ',')"
+            }
+            $lines += 'mode_roots:all|'
+            $lines += ''
+            $lines += '# ----- Custom file extensions per mode -----'
+            $lines += '# modes: front, back, mix, all'
+            $lines += '# Format: mode_exts:<mode>|<ext1>,<ext2>,...'
+            if ($extsList) { $lines += '#mode_exts:all|' + ($exts -join ',') }
+            $lines += ''
+            $lines += '# ----- Custom AI prompts -----'
+            $lines += '#prompt_start:...'
+            $lines += '#prompt_middle:...'
+            $lines += '#prompt_end:...'
+
+            $lines | Out-File -FilePath $outPath -Encoding utf8
+            say -m "Created local config: $outPath" success -Color Green
+            exit 0
+        }
+        '--help' {
+            say -m ""
+            say -m "jcombine" -Color Cyan
+            say -m ""
+            say -m "Usage:" -Color Yellow
+            say -m "    combine              Run interactive mode" -Color Gray
+            say -m "    combine --version    Show version (current: $version)" -Color Gray
+            say -m "    combine --help       Show this help" -Color Gray
+            say -m "    combine --update     Update jcombine" -Color Gray
+            say -m "    combine --config     Open global config file" -Color Gray
+            say -m "    combine --create-config   Create a local config file in current directory with project-specific settings" -Color Gray
+            say -m "    possible flags:" -Color Yellow
+            say -m "    combine --gitfilter <on|off>     Enable/disable git-aware filtering" -Color Gray
+            say -m "    combine --mode <front|back|mix|all>   Select file filtering mode" -Color Gray
+            say -m "    combine --outputmode <chunks|bundle|just>   Select output mode" -Color Gray
+            say -m ""   
+            say -m "Modes:" -Color Yellow
+            say -m "    front -> frontend files only ($($customExts['front'] -join ', ')) from $($customRoots['front'] -join ', ')" -Color DarkGray
+            say -m "    back  -> backend files only ($($customExts['back'] -join ', ')) from $($customRoots['back'] -join ', ')" -Color DarkGray
+            say -m "    mix   -> frontend + backend ($($customExts['mix'] -join ', ')) from $($customRoots['mix'] -join ', ')" -Color DarkGray
+            say -m "    all   -> everything (no filtering) from command run location (no filtering)" -Color DarkGray
+            say -m "" -Color Gray
+            say -m "Output modes:" -Color Yellow
+            say -m "    chunks  -> chunked AI prompts (splits into $chunkSize-character segments (configurable))" -Color DarkGray
+            say -m "    bundle  -> single file bundle + prompts (prompts configurable)" -Color DarkGray
+            say -m "    just    -> raw bundle only" -Color DarkGray
+            say -m "" -Color Gray
+            say -m "Notes:" -Color Yellow
+            say -m "    - Must run inside a git repo" -Color DarkGray
+            say -m "    - Ignored files are configurable (config.txt)" -Color DarkGray
+            say -m "    - Loading bar style and chunk size are configurable" -Color DarkGray
+            say -m "    - Local config (.jcombine-config) can override global config.txt for project-specific settings" -Color DarkGray
+            say -m "    - Custom file extensions can be defined for each mode" -Color DarkGray
+            say -m "    - Custom AI prompts can be defined in config (prompt_start, prompt_middle, prompt_end)" -Color DarkGray
+            say -m "    - Output is saved to the 'output' folder in the tool directory" -Color DarkGray
+            say -m "" -Color Gray
+            say -m "Config path: $configPath" -Color Magenta
+            say -m "" 
+            exit 0
+        }
+        Default {
+            say -m "Unknown argument: $a" error -Color Red
+            say -m "Use --help for usage info." warning -Color Yellow
             exit 1
         }
     }
+    $i += 1
 }
 
-if ($arg -eq "--outputmode") {
-    switch ($args[0]) {
-        "chunks" { $outputMode = "chunks" }
-        "bundle" { $outputMode = "bundle" }
-        "just"   { $outputMode = "just" }
-        default {
-            say -m "Unknown output mode: $($args[0])" error -Color Red
-            exit 1
-        }
-    }
-}
-
-if ($arg -eq "--config") {
-    try {
-        notepad $configPath
-        exit 0
-    }
-    catch {
-        say -m "Failed to open config file: $configPath" error -Color Red
-        exit 1
-    }
-}
-
-if ($arg -and $arg -notin @("--help","--mode","--gitfilter","--outputmode")) {
-    say -m "Unknown argument: $arg" error -Color Red
-    say -m "Use --help for usage info." warning -Color Yellow
-    exit 1
-}
-
-if ($arg -eq "--help") {
-    say -m ""
-    say -m "jcombine" -Color Cyan
-    say -m ""
-    say -m "Usage:" -Color Yellow
-    say -m "    combine              Run interactive mode" -Color Gray
-    say -m "    combine --version    Show version (current: $version)" -Color Gray
-    say -m "    combine --help       Show this help" -Color Gray
-    say -m "    combine --update     Update jcombine" -Color Gray
-    say -m "    combine --gitfilter <on|off>     Enable/disable git-aware filtering" -Color Gray
-    say -m "    combine --mode <front|back|mix|all>   Select file filtering mode" -Color Gray
-    say -m "    combine --outputmode <chunks|bundle|just>   Select output mode" -Color Gray
-    say -m ""   
-    say -m "Modes:" -Color Yellow
-    say -m "    front -> frontend files only ($($customExts['front'] -join ', ')) from $($customRoots['front'] -join ', ')" -Color DarkGray
-    say -m "    back  -> backend files only ($($customExts['back'] -join ', ')) from $($customRoots['back'] -join ', ')" -Color DarkGray
-    say -m "    mix   -> frontend + backend ($($customExts['mix'] -join ', ')) from $($customRoots['mix'] -join ', ')" -Color DarkGray
-    say -m "    all   -> everything (no filtering) from command run location (no filtering)" -Color DarkGray
-    say -m ""
-    say -m "Output modes:" -Color Yellow
-    say -m "    chunks  -> chunked AI prompts (splits into $chunkSize-character segments (configurable))" -Color DarkGray
-    say -m "    bundle  -> single file bundle + prompts (prompts configurable)" -Color DarkGray
-    say -m "    just    -> raw bundle only" -Color DarkGray
-    say -m ""
-    say -m "Notes:" -Color Yellow
-    say -m "    - Must run inside a git repo" -Color DarkGray
-    say -m "    - Ignored files are configurable (config.txt)" -Color DarkGray
-    say -m "    - Loading bar style and chunk size are configurable" -Color DarkGray
-    say -m ""
-    say -m "Config path: $configPath" -Color Magenta
-    say -m ""
-
-    exit 0
-}
+    
 
 # =========================
 # MODE OPTIONS (CONFIG)
