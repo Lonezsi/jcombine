@@ -23,7 +23,7 @@ Restart your terminal afterward. The `combine` command will be available everywh
 - **Interactive TUI** – arrow keys + Enter, or bypass with CLI flags
 - **Customisable loading bar**, chunk size, ignore patterns, and **AI prompts** – all in `config.txt`
 - **Local project overrides** – place a `.jcombine-config` in a repo to override the global `config.txt` values for that directory
-- **Right‑click context menus**
+- **Right‑click context menus** (disabled from 2.4.2)
   - Right‑click an **empty space in any folder** → `jcombine` runs the tool
   - Right‑click **any file** → `jpaste` lets you pick a chunk or bundle and copies it to the clipboard
 - **Self‑update** – `combine --update` fetches the latest version
@@ -33,6 +33,12 @@ Restart your terminal afterward. The `combine` command will be available everywh
 - Windows
 - PowerShell 5.1+ or PowerShell 7+
 - Git installed and available in `PATH`
+
+## Updates
+
+- 2.4.2 added readme updates, directory targeting and fixed install script location bug
+- 2.4.0 added local configs
+- 2.2.1 context menus in windows (todo: replan this feature)
 
 ## ⌨️ Usage
 
